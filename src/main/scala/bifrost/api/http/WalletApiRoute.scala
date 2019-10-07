@@ -54,7 +54,6 @@ case class WalletApiRoute(override val settings: Settings, nodeViewHolderRef: Ac
 
                   (request \\ "method").head.asString.get match {
                     case "transferPolysPrototype" => transferPolysPrototype(params.head, id)
-                    case "transferArbits" => transferArbits(params.head, id)
                     case "transferArbitsPrototype" => transferArbitsPrototype(params.head, id)
                     case "balances" => balances(params.head, id)
                     case "unlockKeyfile" => unlockKeyfile(params.head, id)
@@ -98,34 +97,6 @@ case class WalletApiRoute(override val settings: Settings, nodeViewHolderRef: Ac
       // Update nodeView with new TX
       PolyTransfer.validatePrototype(tx) match {
         case Success(_) =>
-          tx.json
-        case Failure(e) => throw new Exception(s"Could not validate transaction: $e")
-      }
-    }
-  }
-
-  //YT NOTE - change is returned to first address from senders list
-  private def transferArbits(params: Json, id: String): Future[Json] = {
-    viewAsync().map { view =>
-      val wallet = view.vault
-      val amount: Long = (params \\ "amount").head.asNumber.get.toLong.get
-      val recipient: PublicKey25519Proposition = PublicKey25519Proposition(Base58.decode((params \\ "recipient").head.asString.get).get)
-      val sender: IndexedSeq[PublicKey25519Proposition] = (params \\ "sender").head.asArray.get.map(key => PublicKey25519Proposition(Base58.decode(key.asString.get).get)).toIndexedSeq
-      val fee: Long = (params \\ "fee").head.asNumber.flatMap(_.toLong).getOrElse(0L)
-      // Optional API parameters
-      val data: String = (params \\ "data").headOption match {
-        case Some(dataStr) => dataStr.asString.getOrElse("")
-        case None => ""
-      }
-      if(view.state.tbr == null) throw new Exception("TokenBoxRegistry not defined for node")
-      if(view.state.nodeKeys != null)
-        sender.foreach(key => if(!view.state.nodeKeys.contains(ByteArrayWrapper(key.pubKeyBytes))) throw new Exception("Node not set to watch for specified public key"))
-      val tx = ArbitTransfer.create(view.state.tbr, wallet, IndexedSeq((recipient, amount)), sender, fee, data).get
-      // Update nodeView with new TX
-      println(tx.json)
-      ArbitTransfer.validate(tx) match {
-        case Success(_) =>
-          nodeViewHolderRef ! LocallyGeneratedTransaction[ProofOfKnowledgeProposition[PrivateKey25519], ArbitTransfer](tx)
           tx.json
         case Failure(e) => throw new Exception(s"Could not validate transaction: $e")
       }
