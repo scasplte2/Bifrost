@@ -157,33 +157,6 @@ class WalletRPCSpec extends WordSpec
       }
     }
 
-    "Transfer some polys" in {
-      val requestBody = ByteString(
-        s"""
-           |{
-           |   "jsonrpc": "2.0",
-           |   "id": "1",
-           |   "method": "transferPolys",
-           |   "params": [{
-           |      "sender": ["${publicKeys("investor")}", "${publicKeys("hub")}", "${publicKeys("producer")}"],
-           |     "recipient": "${publicKeys("investor")}",
-           |     "amount": 5,
-           |     "fee": 0,
-           |     "data": ""
-           |   }]
-           |}
-        """.stripMargin)
-
-      httpPOST(requestBody) ~> route ~> check {
-        val res = parse(responseAs[String]).right.get
-        (res \\ "error").isEmpty shouldBe true
-        (res \\ "result").head.asObject.isDefined shouldBe true
-        val txHash = ((res \\ "result").head \\ "txHash").head.asString.get
-        val txInstance: BifrostTransaction = view().pool.getById(Base58.decode(txHash).get).get
-        view().pool.remove(txInstance)
-      }
-    }
-
     "Create transfer polys prototype" in {
       val requestBody = ByteString(
         s"""
