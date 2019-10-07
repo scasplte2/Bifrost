@@ -56,7 +56,6 @@ case class AssetApiRoute (override val settings: Settings, nodeViewHolderRef: Ac
                 (request \\ "method").head.asString.get match {
                   case "redeemAssets" => redeemAssets(params.head, id)
                   case "transferAssetsPrototype" => transferAssetsPrototype(params.head, id)
-                  case "createAssets" => createAssets(params.head, id)
                   case "createAssetsPrototype" => createAssetsPrototype(params.head, id)
                 }
               }
@@ -118,30 +117,6 @@ case class AssetApiRoute (override val settings: Settings, nodeViewHolderRef: Ac
       // Update nodeView with new TX
       AssetTransfer.validatePrototype(tx) match {
         case Success(_) =>
-          tx.json
-        case Failure(e) => throw new Exception(s"Could not validate transaction: $e")
-      }
-    }
-  }
-
-
-  private def createAssets(params: Json, id: String): Future[Json] = {
-    viewAsync().map { view =>
-      val wallet = view.vault
-      val issuer = PublicKey25519Proposition(Base58.decode((params \\ "issuer").head.asString.get).get)
-      val recipient: PublicKey25519Proposition = PublicKey25519Proposition(Base58.decode((params \\ "recipient").head.asString.get).get)
-      val amount: Long = (params \\ "amount").head.asNumber.get.toLong.get
-      val assetCode: String = (params \\ "assetCode").head.asString.getOrElse("")
-      val fee: Long = (params \\ "fee").head.asNumber.flatMap(_.toLong).getOrElse(0L)
-      val data: String = (params \\ "data").headOption match {
-        case Some(dataStr) => dataStr.asString.getOrElse("")
-        case None => ""
-      }
-      val tx = AssetCreation.createAndApply(wallet, IndexedSeq((recipient, amount)), fee, issuer, assetCode, data).get
-
-      AssetCreation.validate(tx) match {
-        case Success(_) =>
-          nodeViewHolderRef ! LocallyGeneratedTransaction[ProofOfKnowledgeProposition[PrivateKey25519], AssetCreation](tx)
           tx.json
         case Failure(e) => throw new Exception(s"Could not validate transaction: $e")
       }

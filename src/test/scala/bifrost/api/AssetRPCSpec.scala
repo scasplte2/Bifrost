@@ -1,5 +1,7 @@
 package bifrost.api
 
+import java.time.Instant
+
 import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.model.{HttpEntity, HttpMethods, HttpRequest, MediaTypes}
@@ -12,7 +14,7 @@ import bifrost.history.BifrostHistory
 import bifrost.mempool.BifrostMemPool
 import bifrost.scorexMod.GenericNodeViewHolder.{CurrentView, GetCurrentView}
 import bifrost.state.BifrostState
-import bifrost.transaction.bifrostTransaction.BifrostTransaction
+import bifrost.transaction.bifrostTransaction.{AssetCreation, BifrostTransaction}
 import bifrost.transaction.box.ArbitBox
 import bifrost.wallet.BWallet
 import bifrost.{BifrostGenerators, BifrostNodeViewHolder}
@@ -68,70 +70,22 @@ class AssetRPCSpec extends WordSpec
   gw.unlockKeyFile(publicKeys("producer"), "genesis")
   gw.unlockKeyFile(publicKeys("hub"), "genesis")
 
+  val initialAssets = AssetCreation.createAndApply(gw, IndexedSeq((PublicKey25519Proposition(Base58.decode(publicKeys("investor")).get), 10)),
+    0L, PublicKey25519Proposition(Base58.decode(publicKeys("hub")).get), "etherAssets", "").get
+
+  val block = BifrostBlock(
+    Array.fill(BifrostBlock.SignatureLength)(-1: Byte),
+    Instant.now.toEpochMilli,
+    ArbitBox(PublicKey25519Proposition(Array.fill(Curve25519.KeyLength)(0: Byte)), 0L, 0L),
+    Signature25519(Array.fill(BifrostBlock.SignatureLength)(0: Byte)),
+    Seq(initialAssets),
+    10L,
+    settings.version
+  )
+
+  val modifiedState = view().state.applyModifier(block)
+
   "Asset RPC" should {
-
-    // TODO asset redemption does not work
-/*
-    "Redeem some assets" in {
-      val requestBody = ByteString(
-        s"""
-           |{
-           |   "jsonrpc": "2.0",
-           |   "id": "1",
-           |   "method": "redeemAssets",
-           |   "params": [{
-           |     "signingPublicKey": "6sYyiTguyQ455w2dGEaNbrwkAWAEYV1Zk6FtZMknWDKQ"
-           |   }]
-           |}
-        """.stripMargin)
-            httpPOST(requestBody) ~> route ~> check {
-              val res = parse(responseAs[String]).right.get
-              (res \\ "error").head.asObject.isDefined shouldBe true
-              (res \\ "result").isEmpty shouldBe true
-            }
-    }
-*/
-
-
-    "Create some assets" in {
-      val requestBody = ByteString(
-        s"""
-           |{
-           |   "jsonrpc": "2.0",
-           |   "id": "1",
-           |   "method": "createAssets",
-           |   "params": [{
-           |     "issuer": "${publicKeys("hub")}",
-           |     "recipient": "${publicKeys("investor")}",
-           |     "amount": 10,
-           |     "assetCode": "etherAssets",
-           |     "fee": 0,
-           |     "data": ""
-           |   }]
-           |}
-        """.stripMargin)
-
-      httpPOST(requestBody) ~> route ~> check {
-        val res = parse(responseAs[String]).right.get
-        (res \\ "error").isEmpty shouldBe true
-        (res \\ "result").head.asObject.isDefined shouldBe true
-        val txHash = ((res \\ "result").head \\ "txHash").head.asString.get
-        val txInstance: BifrostTransaction = view().pool.getById(Base58.decode(txHash).get).get
-
-        val history = view().history
-        val tempBlock = BifrostBlock(history.bestBlockId,
-          System.currentTimeMillis(),
-          ArbitBox(PublicKey25519Proposition(history.bestBlockId), 0L, 10000L),
-          Signature25519(Array.fill(Curve25519.SignatureLength)(1: Byte)),
-          Seq(txInstance),
-          10L,
-          settings.version
-        )
-        view().state.applyModifier(tempBlock)
-        view().pool.remove(txInstance)
-        //Dont need further checks here since the subsequent tests would fail if this one did
-      }
-    }
 
     "Create assets prototype" in {
       val requestBody = ByteString(
@@ -183,6 +137,28 @@ class AssetRPCSpec extends WordSpec
         (res \\ "result").head.asObject.isDefined shouldBe true
       }
     }
+
+    // TODO asset redemption does not work
+    /*
+        "Redeem some assets" in {
+          val requestBody = ByteString(
+            s"""
+               |{
+               |   "jsonrpc": "2.0",
+               |   "id": "1",
+               |   "method": "redeemAssets",
+               |   "params": [{
+               |     "signingPublicKey": "6sYyiTguyQ455w2dGEaNbrwkAWAEYV1Zk6FtZMknWDKQ"
+               |   }]
+               |}
+            """.stripMargin)
+                httpPOST(requestBody) ~> route ~> check {
+                  val res = parse(responseAs[String]).right.get
+                  (res \\ "error").head.asObject.isDefined shouldBe true
+                  (res \\ "result").isEmpty shouldBe true
+                }
+        }
+    */
   }
 
   override def afterAll() {
