@@ -55,7 +55,6 @@ case class AssetApiRoute (override val settings: Settings, nodeViewHolderRef: Ac
 
                 (request \\ "method").head.asString.get match {
                   case "redeemAssets" => redeemAssets(params.head, id)
-                  case "transferAssets" => transferAssets(params.head, id)
                   case "transferAssetsPrototype" => transferAssetsPrototype(params.head, id)
                   case "createAssets" => createAssets(params.head, id)
                   case "createAssetsPrototype" => createAssetsPrototype(params.head, id)
@@ -91,34 +90,6 @@ case class AssetApiRoute (override val settings: Settings, nodeViewHolderRef: Ac
       AssetRedemption.validate(tx) match {
         case Success(_) =>
           nodeViewHolderRef ! LocallyGeneratedTransaction[ProofOfKnowledgeProposition[PrivateKey25519], AssetRedemption](tx)
-          tx.json
-        case Failure(e) => throw new Exception(s"Could not validate transaction: $e")
-      }
-    }
-  }
-
-
-  private def transferAssets(params: Json, id: String): Future[Json] = {
-    viewAsync().map { view =>
-      val wallet = view.vault
-      val amount: Long = (params \\ "amount").head.asNumber.get.toLong.get
-      val recipient: PublicKey25519Proposition = PublicKey25519Proposition(Base58.decode((params \\ "recipient").head.asString.get).get)
-      val sender: IndexedSeq[PublicKey25519Proposition] = (params \\ "sender").head.asArray.get.map(key => PublicKey25519Proposition(Base58.decode(key.asString.get).get)).toIndexedSeq
-      val fee: Long = (params \\ "fee").head.asNumber.flatMap(_.toLong).getOrElse(0L)
-      val issuer = PublicKey25519Proposition(Base58.decode((params \\ "issuer").head.asString.get).get)
-      val assetCode: String = (params \\ "assetCode").head.asString.getOrElse("")
-      val data: String = (params \\ "data").headOption match {
-        case Some(dataStr) => dataStr.asString.getOrElse("")
-        case None => ""
-      }
-      if(view.state.tbr == null) throw new Exception("TokenBoxRegistry not defined for node")
-      if(view.state.nodeKeys != null)
-        sender.foreach(key => if(!view.state.nodeKeys.contains(ByteArrayWrapper(key.pubKeyBytes))) throw new Exception("Node not set to watch for specified public key"))
-      val tx = AssetTransfer.create(view.state.tbr, wallet, IndexedSeq((recipient, amount)), sender, fee, issuer, assetCode, data).get
-      println(tx.json)
-      AssetTransfer.validate(tx) match {
-        case Success(_) =>
-          nodeViewHolderRef ! LocallyGeneratedTransaction[ProofOfKnowledgeProposition[PrivateKey25519], AssetTransfer](tx)
           tx.json
         case Failure(e) => throw new Exception(s"Could not validate transaction: $e")
       }

@@ -158,37 +158,6 @@ class AssetRPCSpec extends WordSpec
       }
     }
 
-    "Transfer some assets" in {
-      val requestBody = ByteString(
-        s"""
-           |{
-           |   "jsonrpc": "2.0",
-           |   "id": "1",
-           |   "method": "transferAssets",
-           |   "params": [{
-           |     "issuer": "${publicKeys("hub")}",
-           |      "sender": ["${publicKeys("investor")}", "${publicKeys("hub")}", "${publicKeys("producer")}"],
-           |     "recipient": "${publicKeys("producer")}",
-           |     "amount": 1,
-           |     "assetCode": "etherAssets",
-           |     "fee": 0,
-           |     "data": ""
-           |   }]
-           |}
-        """.stripMargin)
-
-      httpPOST(requestBody) ~> route ~> check {
-        val res = parse(responseAs[String]).right.get
-        (res \\ "error").isEmpty shouldBe true
-        (res \\ "result").head.asObject.isDefined shouldBe true
-
-        //Removing transaction from mempool so as not to affect ProgramRPC tests
-        val txHash = ((res \\ "result").head \\ "txHash").head.asString.get
-        val txInstance: BifrostTransaction = view.pool.getById(Base58.decode(txHash).get).get
-        view.pool.remove(txInstance)
-      }
-    }
-
     "Create transfer assets prototype" in {
       val requestBody = ByteString(
         s"""
