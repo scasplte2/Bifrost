@@ -104,4 +104,5 @@ object CodeCreation {
 
     CodeCreation(to, signature, code, fee, timestamp, data)
   }
+
 }

@@ -1,5 +1,7 @@
 package bifrost.api
 
+import java.time.Instant
+
 import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.model.{HttpEntity, HttpMethods, HttpRequest, MediaTypes}
@@ -18,7 +20,7 @@ import io.circe.parser.parse
 import org.scalatest.{Matchers, WordSpec}
 import bifrost.block.Block
 import bifrost.blocks.BifrostBlock
-import bifrost.transaction.bifrostTransaction.BifrostTransaction
+import bifrost.transaction.bifrostTransaction.{AssetCreation, BifrostTransaction}
 import bifrost.transaction.box.ArbitBox
 import bifrost.transaction.box.proposition.PublicKey25519Proposition
 import bifrost.transaction.proof.Signature25519
@@ -78,34 +80,22 @@ class NodeViewRPCSpec extends WordSpec
   gw.unlockKeyFile(publicKeys("producer"), "genesis")
   gw.unlockKeyFile(publicKeys("hub"), "genesis")
 
-  var txHash: String = ""
-  var assetTxHash: String = ""
-  var assetTxInstance: BifrostTransaction = null
-  var blockId: Block.BlockId = Array[Byte]()
+  val assetTx = AssetCreation.createAndApply(gw, IndexedSeq((PublicKey25519Proposition(Base58.decode(publicKeys("investor")).get), 10)),
+    0L, PublicKey25519Proposition(Base58.decode(publicKeys("hub")).get), "etherAssets", "").get
+  val assetTxId = Base58.encode(assetTx.id)
 
-  val requestBody = ByteString(
-    s"""
-       |{
-       |   "jsonrpc": "2.0",
-       |   "id": "1",
-       |   "method": "createAssets",
-       |   "params": [{
-       |     "issuer": "${publicKeys("hub")}",
-       |     "recipient": "${publicKeys("investor")}",
-       |     "amount": 10,
-       |     "assetCode": "x",
-       |     "fee": 0,
-       |     "data": ""
-       |   }]
-       |}
-        """.stripMargin)
-
-  httpPOSTAsset(requestBody) ~> routeAsset ~> check {
-    val res = parse(responseAs[String]).right.get
-    (res \\ "error").isEmpty shouldBe true
-    (res \\ "result").head.asObject.isDefined shouldBe true
-    assetTxHash = ((res \\ "result").head \\ "txHash").head.asString.get
-  }
+  view().pool.put(assetTx)
+  val history = view().history
+  //Create a block with the above created createAssets transaction
+  val block = BifrostBlock(history.bestBlockId,
+    System.currentTimeMillis(),
+    ArbitBox(PublicKey25519Proposition(history.bestBlockId), 0L, 10000L),
+    Signature25519(Array.fill(Curve25519.SignatureLength)(1: Byte)),
+    Seq(assetTx),
+    10L,
+    settings.version
+  )
+  history.append(block)
 
   "NodeView RPC" should {
     "Get first 100 transactions in mempool" in {
@@ -123,31 +113,13 @@ class NodeViewRPCSpec extends WordSpec
         val res = parse(responseAs[String]).right.get
         (res \\ "error").isEmpty shouldBe true
         (res \\ "result").isInstanceOf[List[Json]] shouldBe true
-        var txHashesArray = ((res \\ "result").head \\ "txHash")
-        txHashesArray.find(tx => tx.asString.get == assetTxHash) match {
-          case Some (tx) =>
-            txHash = tx.asString.get
-          case None =>
-        }
-        txHash shouldEqual assetTxHash
-        assert(txHashesArray.size <= 100)
-        assetTxInstance = view().pool.getById(Base58.decode(txHash).get).get
-        val history = view().history
-        //Create a block with the above created createAssets transaction
-        val tempBlock = BifrostBlock(history.bestBlockId,
-          System.currentTimeMillis(),
-          ArbitBox(PublicKey25519Proposition(history.bestBlockId), 0L, 10000L),
-          Signature25519(Array.fill(Curve25519.SignatureLength)(1: Byte)),
-          Seq(assetTxInstance),
-          10L,
-          settings.version
-        )
-        history.append(tempBlock)
-        blockId = tempBlock.id
+        val txHashesArray = ((res \\ "result").head \\ "txHash")
+        txHashesArray.size should be <= 1
+        txHashesArray.head.asString.get shouldEqual assetTxId
       }
     }
 
-    "Get transaction from the mepool by id" in {
+    "Get transaction from the mempool by id" in {
       val requestBody = ByteString(
         s"""
            |{
@@ -155,7 +127,7 @@ class NodeViewRPCSpec extends WordSpec
            |   "id": "1",
            |   "method": "transactionFromMempool",
            |   "params": [{
-           |      "transactionId": "${txHash}"
+           |      "transactionId": "${assetTxId}"
            |   }]
            |}
            |
@@ -165,10 +137,10 @@ class NodeViewRPCSpec extends WordSpec
         val res = parse(responseAs[String]).right.get
         (res \\ "error").isEmpty shouldBe true
         (res \\ "result").isInstanceOf[List[Json]] shouldBe true
-        ((res \\ "result").head \\ "txHash").head.asString.get shouldEqual txHash
+        ((res \\ "result").head \\ "txHash").head.asString.get shouldEqual assetTxId
 
         //Removing the createAssets transaction from the mempool
-        view().pool.remove(assetTxInstance)
+        view().pool.remove(assetTx)
       }
     }
 
@@ -180,7 +152,7 @@ class NodeViewRPCSpec extends WordSpec
            |   "id": "1",
            |   "method": "transactionById",
            |   "params": [{
-           |      "transactionId": "${txHash}"
+           |      "transactionId": "${assetTxId}"
            |   }]
            |}
            |
@@ -190,7 +162,7 @@ class NodeViewRPCSpec extends WordSpec
         val res = parse(responseAs[String]).right.get
         (res \\ "error").isEmpty shouldBe true
         (res \\ "result").isInstanceOf[List[Json]] shouldBe true
-        ((res \\ "result").head \\ "txHash").head.asString.get shouldEqual txHash
+        ((res \\ "result").head \\ "txHash").head.asString.get shouldEqual assetTxId
       }
     }
 
@@ -203,7 +175,7 @@ class NodeViewRPCSpec extends WordSpec
            |   "id": "1",
            |   "method": "blockById",
            |   "params": [{
-           |      "blockId": "${Base58.encode(blockId)}"
+           |      "blockId": "${Base58.encode(block.id)}"
            |   }]
            |}
            |
@@ -214,10 +186,9 @@ class NodeViewRPCSpec extends WordSpec
         (res \\ "error").isEmpty shouldBe true
         (res \\ "result").isInstanceOf[List[Json]] shouldBe true
         val txsArray = ((res \\ "result").head \\ "txs").head.asArray.get
-        txsArray.filter(tx => {tx \\"txHash"} == txHash)
         //Checking that the block found contains the above createAssets transaction
         //since that block's id was used as the search parameter
-        txsArray.size shouldEqual 1
+        txsArray.map(tx => (tx \\ "txHash").head.asString.get) should contain (assetTxId)
       }
     }
   }
