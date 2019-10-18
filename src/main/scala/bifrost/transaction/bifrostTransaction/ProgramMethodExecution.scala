@@ -141,6 +141,7 @@ object ProgramMethodExecution {
 
   def validate(tx: ProgramMethodExecution): Try[Unit] = Try {
 
+    require(tx.fees.values.sum > 0)
     require(tx.signatures(tx.owner).isValid(tx.owner, tx.messageToSign)
       , "Either an invalid signature was submitted or the party listed was not part of the program.")
 
