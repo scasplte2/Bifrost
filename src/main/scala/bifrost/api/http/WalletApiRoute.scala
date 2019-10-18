@@ -14,7 +14,7 @@ import io.circe.syntax._
 import bifrost.LocalInterface.LocallyGeneratedTransaction
 import bifrost.crypto.Bip39
 import bifrost.settings.Settings
-import bifrost.transaction.bifrostTransaction.{ArbitTransfer, PolyTransfer}
+import bifrost.transaction.bifrostTransaction.{ArbitTransfer, BifrostTransaction, PolyTransfer}
 import bifrost.transaction.box.proposition.{ProofOfKnowledgeProposition, PublicKey25519Proposition}
 import bifrost.transaction.state.PrivateKey25519
 import io.iohk.iodb.ByteArrayWrapper
@@ -61,6 +61,7 @@ case class WalletApiRoute(override val settings: Settings, nodeViewHolderRef: Ac
                     case "generateKeyfile" => generateKeyfile(params.head, id)
                     case "listOpenKeyfiles" => listOpenKeyfiles(params.head, id)
                     case "importSeedPhrase" => importKeyfile(params.head, id)
+                    case "signTransaction" => signTransaction(params.head, id)
                   }
                 }
                 futureResponse map {
@@ -221,6 +222,20 @@ case class WalletApiRoute(override val settings: Settings, nodeViewHolderRef: Ac
         case pkp: PrivateKey25519 => Some(Base58.encode(pkp.publicKeyBytes))
         case _ => None
       }).asJson
+    }
+  }
+
+  private def signTransaction(params: Json, id: String): Future[Json] = {
+    viewAsync().map { view =>
+      val wallet = view.vault
+      val props = (params \\ "from").head.asObject.get.toMap.keys.map(k => PublicKey25519Proposition(Base58.decode(k).get)).toIndexedSeq
+      val tx = (params \\ "tx").head.asJson match {
+        case btx: BifrostTransaction => btx
+      }
+      val signatures = BifrostTransaction.signTx(wallet, props, tx.messageToSign)
+
+      tx.json
+      signatures.map(sig => Base58.encode(sig._1.pubKeyBytes) -> Base58.encode(sig._2.signature)).asJson
     }
   }
 }
