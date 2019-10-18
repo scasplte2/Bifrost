@@ -244,6 +244,8 @@ case class WalletApiRoute(override val settings: Settings, nodeViewHolderRef: Ac
     viewAsync().map { view =>
       val tx = (params \\ "tx").head.asInstanceOf[BifrostTransaction]
 
+      view.state.validate(tx)
+
       nodeViewHolderRef ! LocallyGeneratedTransaction[ProofOfKnowledgeProposition[PrivateKey25519], BifrostTransaction](tx)
       tx.json
     }
