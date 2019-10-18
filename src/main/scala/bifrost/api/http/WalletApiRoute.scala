@@ -14,7 +14,7 @@ import io.circe.syntax._
 import bifrost.LocalInterface.LocallyGeneratedTransaction
 import bifrost.crypto.Bip39
 import bifrost.settings.Settings
-import bifrost.transaction.bifrostTransaction.{ArbitTransfer, BifrostTransaction, PolyTransfer}
+import bifrost.transaction.bifrostTransaction.{ArbitTransfer, BifrostTransaction, PolyTransfer, ProgramMethodExecution}
 import bifrost.transaction.box.proposition.{ProofOfKnowledgeProposition, PublicKey25519Proposition}
 import bifrost.transaction.state.PrivateKey25519
 import io.iohk.iodb.ByteArrayWrapper
@@ -62,6 +62,7 @@ case class WalletApiRoute(override val settings: Settings, nodeViewHolderRef: Ac
                     case "listOpenKeyfiles" => listOpenKeyfiles(params.head, id)
                     case "importSeedPhrase" => importKeyfile(params.head, id)
                     case "signTransaction" => signTransaction(params.head, id)
+                    case "broadcastTransaction" => broadcastTransaction(params.head, id)
                   }
                 }
                 futureResponse map {
@@ -236,6 +237,15 @@ case class WalletApiRoute(override val settings: Settings, nodeViewHolderRef: Ac
 
       tx.json
       signatures.map(sig => Base58.encode(sig._1.pubKeyBytes) -> Base58.encode(sig._2.signature)).asJson
+    }
+  }
+
+  private def broadcastTransaction(params: Json, id: String): Future[Json] = {
+    viewAsync().map { view =>
+      val tx = (params \\ "tx").head.asInstanceOf[BifrostTransaction]
+
+      nodeViewHolderRef ! LocallyGeneratedTransaction[ProofOfKnowledgeProposition[PrivateKey25519], BifrostTransaction](tx)
+      tx.json
     }
   }
 }
