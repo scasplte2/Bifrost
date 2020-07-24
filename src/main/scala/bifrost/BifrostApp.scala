@@ -40,20 +40,24 @@ class BifrostApp(startupOpts: StartupOpts) extends Logging with Runnable {
   type PMOD = Block
   type NVHT = NodeViewHolder
 
+  // Setup settings file to be passed into the application
   private val settings: AppSettings = AppSettings.read(startupOpts)
   log.debug(s"Starting application with settings \n$settings")
 
+  // Setup name limit defined in application.conf
   private val conf: Config = ConfigFactory.load("application")
   private val ApplicationNameLimit: Int = conf.getInt("app.applicationNameLimit")
 
-  /* ----------------- *//* ----------------- *//* ----------------- *//* ----------------- *//* ----------------- *//* ----------------- */
   // Setup the execution environment for running the application
   protected implicit lazy val actorSystem: ActorSystem = ActorSystem(settings.network.agentName)
   private implicit val timeout: Timeout = Timeout(settings.network.controllerTimeout.getOrElse(5 seconds))
   implicit val executionContext: ExecutionContext = actorSystem.dispatcher
+
+  /* ----------------- *//* ----------------- *//* ----------------- *//* ----------------- *//* ----------------- *//* ----------------- */
+  // Begin constructing the BifrostContext
   private val timeProvider = new NetworkTimeProvider(settings.ntp)
 
-  // check for gateway device and setup port forwarding
+  // check for gateway device and setup port forwarding if enabled
   private val upnpGateway: Option[upnp.Gateway] = if (settings.network.upnpEnabled) upnp.Gateway(settings.network) else None
 
   // save your address for sending to others peers
@@ -63,8 +67,8 @@ class BifrostApp(startupOpts: StartupOpts) extends Logging with Runnable {
     }
   }
 
-  // enumerate features and message specs present for
-  protected val features: Seq[peer.PeerFeature] = Seq()
+  // enumerate features and message specs present for your node
+  protected val features: Seq[peer.PeerFeature] = Seq() // todo: JAA - add localAddressFeature here?
   protected val featureSerializers: peer.PeerFeature.Serializers = features.map(f => f.featureId -> f.serializer).toMap
   protected val additionalMessageSpecs: Seq[MessageSpec[_]] = Seq(BifrostSyncInfoMessageSpec)
 
@@ -187,11 +191,14 @@ class BifrostApp(startupOpts: StartupOpts) extends Logging with Runnable {
   }
 }
 
+// This is the primary application object and is the entry point for Bifrost to begin execution
 object BifrostApp extends Logging {
+  // check if Kamon instrumentation should be started.
+  // DO NOT MOVE!! This must happen before anything else!
   private val conf: Config = ConfigFactory.load("application")
   if (conf.getBoolean("kamon.enable")) Kamon.init()
 
-  import com.joefkelley.argyle._
+  import com.joefkelley.argyle._ // import for parsing command line arguments
 
   val argParser: Arg[StartupOpts] = (
     optional[String]("--config", "-c") and

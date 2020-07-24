@@ -197,6 +197,7 @@ object GetPeersSpec extends MessageSpecV1[Unit] {
   * on the network.
   */
 class PeersSpec(featureSerializers: PeerFeature.Serializers, peersLimit: Int) extends MessageSpecV1[Seq[PeerSpec]] {
+  // TODO: JAA - transition to the parse and serializer methods implemented in other messages
   private val peerSpecSerializer = new PeerSpecSerializer(featureSerializers)
 
   override val messageCode: Message.MessageCode = PeersSpec.messageCode

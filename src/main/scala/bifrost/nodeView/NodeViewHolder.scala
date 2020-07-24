@@ -4,25 +4,23 @@ import akka.actor.{ActorRef, ActorSystem, Props}
 import bifrost.crypto.PrivateKey25519Companion
 import bifrost.history.History
 import bifrost.mempool.MemPool
+import bifrost.modifier.ModifierId
 import bifrost.modifier.block.{Block, BlockCompanion}
-import bifrost.modifier.box.proposition.PublicKey25519Proposition
 import bifrost.modifier.box.ArbitBox
+import bifrost.modifier.box.proposition.PublicKey25519Proposition
 import bifrost.modifier.transaction.bifrostTransaction.{ArbitTransfer, GenericTransaction, PolyTransfer, Transaction}
 import bifrost.modifier.transaction.serialization.TransactionCompanion
-import bifrost.modifier.ModifierId
 import bifrost.network.BifrostSyncInfo
 import bifrost.nodeView.NodeViewModifier.ModifierTypeId
 import bifrost.settings.AppSettings
 import bifrost.state.State
-import bifrost.utils.{Logging, NetworkTimeProvider}
 import bifrost.utils.serialization.BifrostSerializer
+import bifrost.utils.{Logging, NetworkTimeProvider}
 import bifrost.wallet.Wallet
 import scorex.crypto.encode.Base58
 
-class NodeViewHolder(appSettings: AppSettings, timeProvider: NetworkTimeProvider)
+class NodeViewHolder(override val settings: AppSettings, timeProvider: NetworkTimeProvider)
   extends GenericNodeViewHolder[Transaction, Block] {
-
-  override lazy val settings: AppSettings = appSettings
 
   override type SI = BifrostSyncInfo
   override type HIS = History
