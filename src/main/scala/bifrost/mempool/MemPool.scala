@@ -37,6 +37,7 @@ case class MemPool(unconfirmed: TrieMap[ByteArrayWrapper, Transaction])
     this
   }
 
+  // fixme: JAA - shouldn't this just call the above function instead of recreating it?
   override def put(txs: Iterable[Transaction]): Try[MemPool] = Try {
     txs.foreach(tx => unconfirmed.put(key(tx.id.hashBytes), tx))
     txs.foreach(tx => tx.boxIdsToOpen.foreach(boxId => {
