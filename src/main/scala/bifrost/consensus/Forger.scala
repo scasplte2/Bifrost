@@ -87,8 +87,16 @@ class Forger(settings: ForgingSettings, viewHolderRef: ActorRef)
    * @param view the view returned from NodeViewHolder
    * @return
    */
-  def actOnCurrentView(view: CV): CV = view
+  private def actOnCurrentView(view: CV): CV = view
 
+  /**
+    * Attempt to create a block and schedule the next forging event
+    *
+    * @param h current node view of history
+    * @param s current node view of state
+    * @param w current node view of the wallet
+    * @param m current node view of the mempool
+    */
   private def tryForging(h: History, s: State, w: Wallet, m: MemPool): Unit = {
     log.info(s"${Console.CYAN}Trying to generate a new block, chain length: ${h.height}${Console.RESET}")
     log.info("chain difficulty: " + h.difficulty)
@@ -115,7 +123,16 @@ class Forger(settings: ForgingSettings, viewHolderRef: ActorRef)
     context.system.scheduler.scheduleOnce(settings.blockGenerationDelay)(viewHolderRef ! GetDataFromCurrentView(actOnCurrentView))
   }
 
-  def pickTransactions(memPool: MemPool,
+  /**
+    * Retrieves a sequence of transaction from the mempool
+    *
+    * @param memPool pool containing unconfirmed trasactions
+    * @param state set of unspent transaction outputs
+    * @param wallet set of boxes available for use in trnsactions
+    * @param parent block to build the next block ato
+    * @return the sequence of transactions to be included in a block
+    */
+  private def pickTransactions(memPool: MemPool,
                        state: State,
                        wallet: Wallet,
                        parent: Block
@@ -142,7 +159,17 @@ class Forger(settings: ForgingSettings, viewHolderRef: ActorRef)
     CB +: regTxs
   }
 
-  def iteration(parent: Block,
+  /**
+    * Attempts to create a block atop the current best block
+    *
+    * @param parent the parent block to be built atop
+    * @param difficulty chain difficulty of the parent block
+    * @param boxKeys sequence of boxes to be used for attempting to create a block
+    * @param txsToInclude sequence of transactions to include in a new block
+    * @param version version to be stamped on the new block
+    * @return a newly forged block
+    */
+  private def iteration(parent: Block,
                 difficulty: Long,
                 boxKeys: Seq[(ArbitBox, PrivateKey25519)],
                 txsToInclude: Seq[Transaction],
