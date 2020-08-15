@@ -49,10 +49,7 @@ class Forger(settings: ForgingSettings, viewHolderRef: ActorRef)
 
   // ----------- CONTEXT && MESSAGE PROCESSING FUNCTIONS
   override def receive: Receive = {
-    case StartForging =>
-      log.info(s"Forger: Received a START signal while forging disabled")
-
-    case _ => nonsense
+    case msg: Any => nonsense(msg)
   }
 
   private def readyToForge: Receive = {
@@ -61,16 +58,10 @@ class Forger(settings: ForgingSettings, viewHolderRef: ActorRef)
       viewHolderRef ! GetDataFromCurrentView(actOnCurrentView)
       context become activeForging
 
-    case StopForging =>
-      log.warn(s"Forger: Received a STOP signal while not forging. Signal ignored")
-
-    case _ => nonsense
+    case msg: Any => nonsense(msg)
   }
 
   private def activeForging: Receive = {
-    case StartForging =>
-      log.warn(s"Forger: Received a START signal while forging. Signal ignored")
-
     case StopForging =>
       log.info(s"Forger: Received a stop signal. Forging will terminate after this trial")
       context become readyToForge
@@ -78,16 +69,18 @@ class Forger(settings: ForgingSettings, viewHolderRef: ActorRef)
     case CurrentView(h: History, s: State, w: Wallet, m: MemPool) =>
       tryForging(h, s, w, m)
 
-    case _ => nonsense
-  }
-
-  private def nonsense: Receive = {
-    case nonsense: Any =>
-      log.warn(s"Forger (in context ${context.toString}): got unexpected input $nonsense from ${sender()}")
+    case msg: Any => nonsense(msg)
   }
 
 ////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////// METHOD DEFINITIONS ////////////////////////////////
+  /**
+    * Logs nonsense input
+    */
+  private def nonsense(msg: Any): Unit = {
+    log.warn(s"Forger (in context ${context.toString}): got unexpected input $msg from ${sender()}")
+  }
+
   /**
    * wrapper function to encapsulate the returned CurrentView
    *
