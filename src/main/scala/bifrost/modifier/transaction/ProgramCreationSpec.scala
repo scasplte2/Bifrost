@@ -1,4 +1,4 @@
-package bifrost.transaction
+package bifrost.modifier.transaction
 
 /**
   * Created by cykoz on 5/11/2017.

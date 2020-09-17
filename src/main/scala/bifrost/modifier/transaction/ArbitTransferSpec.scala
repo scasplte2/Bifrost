@@ -1,4 +1,4 @@
-package bifrost.transaction
+package bifrost.modifier.transaction
 
 import bifrost.modifier.transaction.bifrostTransaction.ArbitTransfer
 import bifrost.state.State
