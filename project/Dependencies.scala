@@ -5,12 +5,13 @@ object Dependencies {
   val circeVersion = "0.14.5"
   val kamonVersion = "2.6.3"
   val simulacrumVersion = "1.0.1"
-  val catsCoreVersion = "2.9.0"
+  val catsCoreVersion = "2.10.0"
   val catsEffectVersion = "3.5.1"
-  val fs2Version = "3.7.0"
-  val logback = "1.4.8"
+  val fs2Version = "3.8.0"
+  val logback = "1.4.11"
   val orientDbVersion = "3.2.21"
   val ioGrpcVersion = "1.57.1"
+  val http4sVersion = "0.23.23"
   val protobufSpecsVersion = "2.0.0-alpha2+11-babd6926-SNAPSHOT" // scala-steward:off
   val bramblScVersion = "2.0.0-alpha4" // scala-steward:off
 
@@ -85,7 +86,7 @@ object Dependencies {
   )
 
   val externalCrypto: Seq[ModuleID] = Seq(
-    "org.bouncycastle" % "bcprov-jdk18on" % "1.75"
+    "org.bouncycastle" % "bcprov-jdk18on" % "1.76"
   )
 
   val levelDb: Seq[ModuleID] = Seq(
@@ -100,7 +101,7 @@ object Dependencies {
   )
 
   val mainargs = Seq(
-    "com.lihaoyi" %% "mainargs" % "0.5.0"
+    "com.lihaoyi" %% "mainargs" % "0.5.1"
   )
 
   val monocle: Seq[ModuleID] = Seq(
@@ -114,6 +115,11 @@ object Dependencies {
   val pureConfig = "com.github.pureconfig" %% "pureconfig"           % "0.17.4"
   val circeYaml = "io.circe"               %% "circe-yaml"           % "0.15.0-RC1"
   val kubernetes = "io.kubernetes"          % "client-java"          % "18.0.1"
+
+  val http4s = Seq(
+    "org.http4s" %% "http4s-ember-client" % http4sVersion,
+    "org.http4s" %% "http4s-dsl"          % http4sVersion
+  )
 
   val bramblScCrypto = "co.topl" %% "crypto"     % bramblScVersion
   val bramblScSdk = "co.topl"    %% "brambl-sdk" % bramblScVersion
@@ -144,7 +150,8 @@ object Dependencies {
     monocle ++
     monitoring ++
     mUnitTestBase ++
-    Seq(grpcServices)
+    Seq(grpcServices) ++
+    http4s
 
   val networkDelayer: Seq[ModuleID] =
     cats ++ catsEffect ++ mainargs ++ logging ++ Seq(
