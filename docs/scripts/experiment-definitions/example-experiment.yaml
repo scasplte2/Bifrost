@@ -13,16 +13,16 @@
 "_template": [ "experiment-templates/template-1.yaml" ]
 
 # these settings control the network topology of the experiment
-"_num_producers": [ 2 ]  # note that the number of producers is implicitly equal to the number of stakers
+"_num_producers": [ 3 ]  # note that the number of producers is implicitly equal to the number of stakers
 "_num_relays": [ 0 ]
 "_topology_type": [ "custom" ]  # one of ring, star, small world, erdos renyi, clique, or custom
   # if topology_type is custom, you can specify (in _topology_edges) the topology as a list of directed edge 5-tuples
 # each tuple is [from, to, latency, download, upload], and you may specify -1 for any value to indicate "no limit"
 # node label indices start at 0, and the first _num_producers nodes are producers, and the next _num_relays are relays
-"_topology_edges": [ [ [ 0, 1, 20, 1000000, 1000000 ], [ 1, 0, 20, 1000000, 1000000 ] ] ]
+"_topology_edges": [ [ [ 0, 1, 1, -1, -1 ], [ 1, 0, 1, -1, -1 ], [ 0, 2, 1, -1, -1 ], [ 2, 0, 1, -1, -1 ], [ 2, 1, 1, -1, -1 ], [ 1, 2, 1, -1, -1 ] ] ]
 
 # override specific settings at these dict-key-paths
-"scenario/transactionsPerSecond": [ 2.5 ]
-"shared-config/bifrost/protocols/0/slot-duration": { "min": 250, "max": 250, "step": 1, "suffix": " milli" }
-"scenario/scenarioTimeout": [ 600 ]
+"scenario/transactionsPerSecond": [ 0.000001 ]
+"shared-config/bifrost/protocols/0/slot-duration": { "min": 1000, "max": 1000, "step": 1, "suffix": " milli" }
+"scenario/scenarioTimeout": [ 900 ]
 "scenario/targetHeight": [ 30 ]

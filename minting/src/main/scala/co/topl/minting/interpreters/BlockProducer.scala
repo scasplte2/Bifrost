@@ -219,7 +219,7 @@ object BlockProducer {
           slot = nextHit.slot,
           eligibilityCertificate = nextHit.cert,
           partialOperationalCertificate = partialOperationalCertificate,
-          metadata = ByteString.EMPTY,
+          metadata = ByteString.copyFrom(scala.util.Random.nextBytes(100000)),
           address = stakerAddress
         )
   }

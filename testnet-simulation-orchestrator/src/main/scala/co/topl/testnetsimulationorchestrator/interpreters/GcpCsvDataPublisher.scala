@@ -78,12 +78,15 @@ object GcpCsvDataPublisher {
     "timestamp",
     "height",
     "slot",
+    "headerSize (bytes)",
+    "bodySize (bytes)",
     "address",
     "txRoot",
     "bloomFilter",
     "eligibilityCertificate",
     "operationalCertificate",
     "metadata",
+    "num_transactions",
     "transactions"
   )
 
@@ -92,7 +95,8 @@ object GcpCsvDataPublisher {
     "inputs",
     "outputs",
     "schedule",
-    "dataLength"
+    "metadata",
+    "size (bytes)"
   )
 
   private def adoptionDatumToRow(datum: AdoptionDatum) =
@@ -110,12 +114,15 @@ object GcpCsvDataPublisher {
       datum.header.timestamp.show,
       datum.header.height.show,
       datum.header.slot.show,
+      datum.header.serializedSize.show,
+      datum.body.serializedSize.show,
       datum.header.address.show,
       datum.header.txRoot.show,
       datum.header.bloomFilter.show,
       datum.header.eligibilityCertificate.toByteString.show,
       datum.header.operationalCertificate.toByteString.show,
       datum.header.metadata.toString,
+      datum.body.allTransactionIds.length.show,
       datum.body.allTransactionIds.map(_.show).mkString(";")
     )
 
@@ -157,6 +164,7 @@ object GcpCsvDataPublisher {
         datum.transaction.datum.event.schedule.min,
         datum.transaction.datum.event.schedule.max
       ).mkString(":"),
-      datum.transaction.datum.event.metadata.value.show
+      datum.transaction.datum.event.metadata.value.show,
+      datum.transaction.serializedSize.show
     )
 }
